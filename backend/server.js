@@ -57,6 +57,16 @@ app.post('/order',async function(req,res){
 
 })
 
+app.get('/orders', async function(req,res){
+    try{
+        const orders = await Order.find()
+        res.send(orders)
+    }catch(error){
+        console.log(error)
+        res.status(500).send('error fetching orders')
+    }
+})
+
 app.get('/',function(req,res){
 res.send("server working");
 })
