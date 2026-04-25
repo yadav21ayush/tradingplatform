@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/yadav21ayush/tradingplatform#readme",
   "dependencies": {
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mongoose": "^9.5.0"
   }

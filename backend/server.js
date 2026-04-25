@@ -5,7 +5,9 @@ const User = require('./models/User');
 const Order = require('./models/order');
 const {buyBTC,sellBTC,getPrice} = require("./services/amm");
 const bcrypt = require("bcryptjs")
-
+const jwt = require("jsonwebtoken")
+require('dotenv').config();   
+const authMiddleware = require("/middleware/auth")
 
 mongoose.connect("mongodb://127.0.0.1:27017/exchange")
   
@@ -29,6 +31,29 @@ app.post('/auth/register',async function(req,res){
     }
     catch(err){
         res.status(500).send("Error saving user" + err.message)
+    }
+})
+
+app.post("/auth/login",async function(req,res){
+    try{
+        const{email,password}= req.body
+        const user = await User.findOne({email})
+        if(!user){
+            return res.status(400).send("user not found ")
+        }
+        const isMatch = await bcrypt.compare(password,user.password)
+        if(!isMatch){
+            return res.status(400).send("invalid password")
+        }
+
+        const token = jwt.sign(
+            { id:user.id},
+            process.env.JWT_SECRET,
+            {expiresIn:"1D"}
+        )
+        res.send(token)
+    }catch(error){
+        res.status(500).send("login error")
     }
 })
 
@@ -75,7 +100,7 @@ app.get('/orders', async function(req,res){
 
 app.post("/trade/buy",async function(req,res){
     try{
-        const{userID,usdtAmount}= req.body
+        const{userId,usdtAmount}= req.body
         const user = await User.findById(userId)
         if(!user) return res.status(400).send("user not found ")
             if(user.balances.USDT < usdtAmount) {
