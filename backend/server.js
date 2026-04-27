@@ -4,10 +4,12 @@ const mongoose = require('mongoose');
 const User = require('./models/User');
 const Order = require('./models/order');
 const {buyBTC,sellBTC,getPrice} = require("./services/amm");
-const bcrypt = require("bcryptjs")
+const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
 require('dotenv').config();   
-const authMiddleware = require("/middleware/auth")
+const authMiddleware = require("./middleware/auth")
+const cors = require("cors")
+app.use(cors())
 
 mongoose.connect("mongodb://127.0.0.1:27017/exchange")
   
@@ -47,21 +49,21 @@ app.post("/auth/login",async function(req,res){
         }
 
         const token = jwt.sign(
-            { id:user.id},
+            { id:user._id},
             process.env.JWT_SECRET,
-            {expiresIn:"1D"}
+            {expiresIn:"1d"}
         )
-        res.send(token)
+        res.send({token})
     }catch(error){
         res.status(500).send("login error")
     }
 })
 
-app.post('/order',async function(req,res){
+app.post('/order',authMiddleware,async function(req,res){
     try{
     const {userID,type,amount}=req.body
    
-    if(!userID || !type || !amount ){
+    if(!userId || !type || !amount ){
         return res.status(400).send("missing fields")
      }
      if(!["buy","sell"].includes(type)){
@@ -98,9 +100,15 @@ app.get('/orders', async function(req,res){
     }
 })
 
-app.post("/trade/buy",async function(req,res){
+app.post("/trade/buy",authMiddleware,async function(req,res){
     try{
-        const{userId,usdtAmount}= req.body
+        const usdtAmount= req.body
+        const userId = req.user.id
+
+        if(!usdtAmount || usdtAmount <=0){
+            return res.status(400).send("invalid amount")
+        }
+
         const user = await User.findById(userId)
         if(!user) return res.status(400).send("user not found ")
             if(user.balances.USDT < usdtAmount) {
@@ -122,9 +130,10 @@ app.post("/trade/buy",async function(req,res){
     }
 })
 
-app.post("/trade/sell",async function(req,res){
+app.post("/trade/sell",authMiddleware,async function(req,res){
     try{
-        const{userId,btcAmount}=req.body
+        const btcAmount=req.body
+        const userId = req.user.id
         const user = await User.findById(userId)
         if(!user) return res.status(400).send("user not found")
             if(user.balances.BTC < btcAmount){

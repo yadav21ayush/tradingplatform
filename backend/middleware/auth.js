@@ -7,7 +7,7 @@ function authMiddleware(req,res,next){
             return res.status(401).send("No token provided")
         }
         const actualToken = token.split(" ")[1]
-        const decoded = jwt.verify(actualToken,"SECRET_KEY")
+        const decoded = jwt.verify(actualToken,process.env.JWT_SECRET)
         req.user = decoded
         next()
     }catch(error){
