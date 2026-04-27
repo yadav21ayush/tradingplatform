@@ -21,7 +21,7 @@ app.post('/auth/register',async function(req,res){
     try{
         const existingUser = await User.findOne({email})
         if(existingUser){
-            return res.status(400).send("user already exists")
+            return res.status(400).json({ message: "User already exists" })
         }
         const hashedPassword = await bcrypt.hash(password,10)
         const user = new User({
@@ -29,10 +29,10 @@ app.post('/auth/register',async function(req,res){
             password:hashedPassword
         })
         await user.save()
-        res.send("User registered successfully") 
+        res.json({ message: "User registered successfully" })
     }
     catch(err){
-        res.status(500).send("Error saving user" + err.message)
+        res.status(500).json({ message: "Error saving user" + err.message })
     }
 })
 
@@ -41,11 +41,11 @@ app.post("/auth/login",async function(req,res){
         const{email,password}= req.body
         const user = await User.findOne({email})
         if(!user){
-            return res.status(400).send("user not found ")
+            return res.status(400).json({ message: "user not found " })
         }
         const isMatch = await bcrypt.compare(password,user.password)
         if(!isMatch){
-            return res.status(400).send("invalid password")
+            return res.status(400).json({ message: "invalid password" })
         }
 
         const token = jwt.sign(
@@ -53,7 +53,7 @@ app.post("/auth/login",async function(req,res){
             process.env.JWT_SECRET,
             {expiresIn:"1d"}
         )
-        res.send({token})
+        res.json({token})
     }catch(error){
         res.status(500).send("login error")
     }
@@ -61,7 +61,8 @@ app.post("/auth/login",async function(req,res){
 
 app.post('/order',authMiddleware,async function(req,res){
     try{
-    const {userID,type,amount}=req.body
+    const {type,amount}=req.body
+    const userId = req.user.id
    
     if(!userId || !type || !amount ){
         return res.status(400).send("missing fields")
@@ -102,7 +103,7 @@ app.get('/orders', async function(req,res){
 
 app.post("/trade/buy",authMiddleware,async function(req,res){
     try{
-        const usdtAmount= req.body
+        const {usdtAmount}= req.body
         const userId = req.user.id
 
         if(!usdtAmount || usdtAmount <=0){
@@ -132,7 +133,7 @@ app.post("/trade/buy",authMiddleware,async function(req,res){
 
 app.post("/trade/sell",authMiddleware,async function(req,res){
     try{
-        const btcAmount=req.body
+        const {btcAmount}=req.body
         const userId = req.user.id
         const user = await User.findById(userId)
         if(!user) return res.status(400).send("user not found")
@@ -161,10 +162,22 @@ app.get('/price',function(req,res){
     })
 })
 
-app.get('/',function(req,res){
-res.send("server working");
+
+app.get('/balance',authMiddleware,async function(req,res){
+    try{
+        const userId = req.user.id
+        const user = await User.findById(userId)
+
+        res.json({
+            BTC: user.balances.BTC,
+            USDT: user.balances.USDT
+        })
+    }catch(error){
+        res.status(500).json({message:"error fetching "})
+    }
+
 })
 
-app.listen(3000,function(){
+app.listen(5000,function(){
     console.log("server started")
 })
